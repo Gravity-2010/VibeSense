@@ -71,12 +71,10 @@ Key goals: Automate reputation tracking for marketing teams and small businesses
 
     ```text
     # In separate terminals:
-    celery -A src.tasks worker --loglevel=info  # For scheduling
-    uvicorn src.ui_service.app:app --reload
-    uvicorn src.ingestion_service.app:app --reload
-    uvicorn src.nlp_service.app:app --reload
-    uvicorn src.aggregation_service.app:app --reload
-    uvicorn src.notification_service.app:app --reload
+    python -m streamlit run src/ui_service/app.py
+    celery -A src.ingestion_service.app.celery_app worker --loglevel=INFO
+    celery -A src.ingestion_service.app.celery_app worker --loglevel=INFO
+    python3 -m src.ai_service.app
+    python3 -m src.aggregation_service.app
+    python3 -m src.notification_service.app
     ```
-
-- Or use Docker Compose for full stack.
