@@ -29,21 +29,40 @@ Base.metadata.create_all(bind=engine)
 # API Endpoint for testing
 @app.get("/summary/{job_id}", response_model=Aggregate)
 async def get_summary(job_id: str):
-    """Retrieve aggregate summary for a job."""
+    """Retrieve aggregate sentiment statistics for a monitoring job."""
     db = SessionLocal()
+
     try:
-        results = db.query(IntervalResultDB).filter(IntervalResultDB.job_id == job_id).all()
+        results = (
+            db.query(IntervalResultDB)
+            .filter(IntervalResultDB.job_id == job_id)
+            .order_by(IntervalResultDB.timestamp.asc())
+            .all()
+        )
+
         if not results:
             raise ValueError("No results found for the job")
-        df = pd.DataFrame([r.model_dump() for r in results])
-        overall_sentiment = df['avg_sentiment'].mean()
-        ci = scipy.stats.norm.interval(0.95, loc=overall_sentiment, scale=df['avg_sentiment'].std()/len(df)**0.5)
-        summary = " ".join(df['summary'].tolist())
+
+        interval_sentiment = results[-1].avg_sentiment or 0.0
+        interval_confidence = results[-1].avg_confidence or 0.0
+
+        overall_sentiment = sum(
+            result.avg_sentiment or 0.0
+            for result in results
+        ) / len(results)
+
+        overall_confidence = sum(
+            result.avg_confidence or 0.0
+            for result in results
+        ) / len(results)
+
         return Aggregate(
-            interval_sentiment=results[-1].avg_sentiment if results else 0.0,
+            interval_sentiment=interval_sentiment,
+            interval_confidence=interval_confidence,
             overall_sentiment=overall_sentiment,
-            ci=ci,
-            summary=summary)
+            overall_confidence=overall_confidence,
+        )
+
     finally:
         db.close()
 
